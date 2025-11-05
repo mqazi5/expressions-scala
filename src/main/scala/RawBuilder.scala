@@ -33,10 +33,22 @@ object RawBuilder extends ExprParser[Expr, Statement]:
     case variable ~ expr => Assignment(variable, expr)
   
   override def onIf(cond: Expr ~ Statement ~ Option[Statement]): Statement = cond match
-    case condition ~ thenBlock ~ elseBlock => If(condition, thenBlock, elseBlock)
+    case condition ~ thenBlock ~ elseBlock => 
+      val thenBlockAsBlock = thenBlock match
+        case b: Block => b
+        case other => Block(List(other))
+      val elseBlockAsBlock = elseBlock.map {
+        case b: Block => b
+        case other => Block(List(other))
+      }
+      If(condition, thenBlockAsBlock, elseBlockAsBlock)
   
   override def onWhile(w: Expr ~ Statement): Statement = w match
-    case condition ~ body => While(condition, body)
+    case condition ~ body => 
+      val bodyAsBlock = body match
+        case b: Block => b
+        case other => Block(List(other))
+      While(condition, bodyAsBlock)
 
   override def onExpressionStmt(e: Expr): Statement = ExpressionStmt(e)
 end RawBuilder
