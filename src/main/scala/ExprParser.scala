@@ -59,8 +59,8 @@ trait ExprParser extends JavaTokenParsers:
   )
 
   def prefixOp: Parser[Expr => Expr] = (
-    "+" ^^^ { e: Expr => e }
-    | "-" ^^^ { e: Expr => UMinus(e) }
+    "+" ^^^ { (e: Expr) => e }
+    | "-" ^^^ { (e: Expr) => UMinus(e) }
   )
 
   /** Helper for left-associative binary operators */
