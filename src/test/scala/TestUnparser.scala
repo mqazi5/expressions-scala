@@ -3,7 +3,6 @@ package edu.luc.cs.laufer.cs371.expressions
 import org.scalatest.funsuite.AnyFunSuite
 import behaviors.*
 import Expr.*
-import Statement.*
 
 class TestUnparser extends AnyFunSuite:
   

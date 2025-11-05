@@ -2,7 +2,6 @@ package edu.luc.cs.laufer.cs371.expressions
 
 import org.scalatest.funsuite.AnyFunSuite
 import behaviors.*
-import Statement.*
 import Expr.*
 import org.json4s.native.JsonMethods.*
 
@@ -13,7 +12,7 @@ class TestToJson extends AnyFunSuite:
     s.replaceAll("\\s+", "")
 
   def prettyJson(value: Any): String = 
-    pretty(render(toJson(value.asInstanceOf[Expr | Statement])))
+    pretty(render(toJson(value.asInstanceOf[Expr])))
 
   test("toJson handles simple constant") {
     val expr = Constant(5)
