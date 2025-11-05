@@ -4,13 +4,13 @@ object Calculator:
 
   def processExpr(input: String): Unit =
     println("You entered: " + input)
-    val result = ASTBuilder.parseAll(ASTBuilder.expr, input)
+    val result = ASTBuilder.parseAll(ASTBuilder.statement, input)
     if result.isEmpty then
       println("This expression could not be parsed")
     else
       import org.json4s.native.JsonMethods.{pretty, render}
       import behaviors.*
-      val raw = RawBuilder.parseAll(RawBuilder.expr, input).get
+      val raw = RawBuilder.parseAll(RawBuilder.statement, input).get
       println("The untyped parse tree is: " + raw)
       val expr = result.get
       println("The resulting expression is: " + expr)

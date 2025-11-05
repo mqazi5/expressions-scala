@@ -8,15 +8,36 @@ import TestFixtures.*
 
 object Main:
   def main(args: Array[String]): Unit =
-    process("p", complex1)
-    process("q", complex2)
-    process("f", bad)
+    // Process expressions
+    processExpr("p", complex1)
+    processExpr("q", complex2)
+    processExpr("f", bad)
 
-  def process(n: String, e: Expr): Unit =
+    // Process statements
+    val factorial = """
+      n = 5;
+      result = 1;
+      while (n > 0) {
+        result = result * n;
+        n = n - 1;
+      }
+    """
+    processStatements("Factorial Program", factorial)
+
+  def processExpr(n: String, e: Expr): Unit =
     println(s"$n = $e")
     println(s"evaluate($n) = ${evaluate(e)}")
     println(s"size($n) = ${size(e)}")
     println(s"height($n) = ${height(e)}")
+
+  def processStatements(name: String, input: String): Unit =
+    println(s"\nProcessing $name:")
+    println(s"Input:\n$input")
+    ASTBuilder.parseAll(ASTBuilder.repl, input) match
+      case ASTBuilder.Success(result, _) =>
+        println(s"AST: $result")
+      case ASTBuilder.NoSuccess(msg, _) =>
+        println(s"Parse error: $msg")
 
 end Main
 
