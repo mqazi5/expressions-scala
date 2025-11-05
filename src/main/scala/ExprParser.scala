@@ -30,20 +30,13 @@ trait ExprParser extends JavaTokenParsers:
 
   /** expr ::= term { { "+" | "-" } term }* | exprStmt | assignment | if | while | block */
   def expr: Parser[Expr] = 
-    arithmetic
-    | exprStmt
-    | assignment
-    | ifStatement
-    | whileLoop
-    | block
-
-  /** arithmetic ::= term { { "+" | "-" } term }* */
-  def arithmetic: Parser[Expr] = term ~ opt(("+" | "-") ~ term) ^^ {
-    case base ~ None => base
-    case base ~ Some(op ~ next) => 
-      if op == "+" then Plus(base, next)
-      else Minus(base, next)
-  }
+    (term ~ rep(("+" | "-") ~ term) ^^ {
+      case base ~ Nil => base
+      case base ~ ops => ops.foldLeft(base) { 
+        case (acc, "+" ~ next) => Plus(acc, next)
+        case (acc, "-" ~ next) => Minus(acc, next)
+      }
+    }) | exprStmt | assignment | ifStatement | whileLoop | block
 
   /** term ::= factor { { "*" | "/" | "%" } factor }* */
   def term: Parser[Expr] = factor ~ opt(("*" | "/" | "%") ~ factor) ^^ {
