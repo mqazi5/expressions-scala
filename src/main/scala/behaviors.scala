@@ -52,8 +52,11 @@ object behaviors:
     
     // Arithmetic expressions
     case UMinus(r)   => 1 + size(r)
-    case Plus(l, r) | Minus(l, r) | Times(l, r) | Div(l, r) | Mod(l, r) => 
-      1 + size(l) + size(r)
+    case Plus(l, r)  => 1 + size(l) + size(r)
+    case Minus(l, r) => 1 + size(l) + size(r)
+    case Times(l, r) => 1 + size(l) + size(r)
+    case Div(l, r)   => 1 + size(l) + size(r)
+    case Mod(l, r)   => 1 + size(l) + size(r)
     
     // Statement expressions
     case Block(expressions) => 1 + expressions.map(size).sum
@@ -69,8 +72,11 @@ object behaviors:
     
     // Arithmetic expressions
     case UMinus(r)   => 1 + height(r)
-    case Plus(l, r) | Minus(l, r) | Times(l, r) | Div(l, r) | Mod(l, r) => 
-      1 + math.max(height(l), height(r))
+    case Plus(l, r)  => 1 + math.max(height(l), height(r))
+    case Minus(l, r) => 1 + math.max(height(l), height(r))
+    case Times(l, r) => 1 + math.max(height(l), height(r))
+    case Div(l, r)   => 1 + math.max(height(l), height(r))
+    case Mod(l, r)   => 1 + math.max(height(l), height(r))
     
     // Statement expressions
     case Block(expressions) => 

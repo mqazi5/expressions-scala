@@ -75,13 +75,29 @@ trait ExprParser extends JavaTokenParsers:
   /** if ::= "if" "(" expr ")" block [ "else" block ] */
   def ifStatement: Parser[Expr] =
     ("if" ~> "(" ~> expr <~ ")") ~ block ~ opt("else" ~> block) ^^ {
-      case cond ~ thenBlock ~ elseBlock => If(cond, thenBlock, elseBlock)
+      case cond ~ thenBlock ~ elseBlock => 
+        // Ensure thenBlock and elseBlock are Block instances
+        val thenBlockExpr = thenBlock match {
+          case b: Block => b
+          case other => Block(List(other))
+        }
+        val elseBlockExpr = elseBlock.map {
+          case b: Block => b
+          case other => Block(List(other))
+        }
+        If(cond, thenBlockExpr, elseBlockExpr)
     }
 
   /** while ::= "while" "(" expr ")" block */
   def whileLoop: Parser[Expr] =
     ("while" ~> "(" ~> expr <~ ")") ~ block ^^ {
-      case cond ~ body => While(cond, body)
+      case cond ~ body => 
+        // Ensure body is a Block instance
+        val bodyBlock = body match {
+          case b: Block => b
+          case other => Block(List(other))
+        }
+        While(cond, bodyBlock)
     }
 
   /** block ::= "{" expr* "}" */
