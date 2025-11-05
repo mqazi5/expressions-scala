@@ -12,9 +12,9 @@ class TestParser extends AnyFunSuite:
 
   // Helper method to parse expressions
   def parseExpr(input: String): Expr =
-    parser.parseAll(parser.arithmetic, input) match
+    parser.parseAll(parser.expr, input) match
       case parser.Success(result, _) => result
-      case parser.NoSuccess(msg, _)  => throw Exception(s"Parse error: $msg")
+      case parser.NoSuccess(msg, next)  => throw Exception(s"Parse error: $msg")
 
   // Helper method to parse statements
   def parseStmt(input: String): Expr =
