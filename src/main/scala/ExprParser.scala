@@ -26,34 +26,50 @@ trait ExprParser extends JavaTokenParsers:
   given [A, B](using CanEqual[A, A], CanEqual[B, B]): CanEqual[A ~ B, A ~ B] = CanEqual.derived
 
   /** repl ::= expr* */
-  def repl: Parser[Expr] = rep(expr) ^^ (exprs => Block(exprs))
+  def repl: Parser[Expr] = rep(statement) ^^ (exprs => Block(exprs))
 
-  /** expr ::= term { { "+" | "-" } term }* | exprStmt | assignment | if | while | block */
-  def expr: Parser[Expr] = 
-    (term ~ rep(("+" | "-") ~ term) ^^ {
-      case base ~ Nil => base
-      case base ~ ops => ops.foldLeft(base) { 
-        case (acc, "+" ~ next) => Plus(acc, next)
-        case (acc, "-" ~ next) => Minus(acc, next)
-      }
-    }) | exprStmt | assignment | ifStatement | whileLoop | block
+  /** statement ::= exprStmt | assignment | if | while | block */
+  def statement: Parser[Expr] = 
+    exprStmt | assignment | ifStatement | whileLoop | block
+
+  /** expr ::= term { { "+" | "-" } term }* */
+  def expr: Parser[Expr] = chainl1(term, addOp)
 
   /** term ::= factor { { "*" | "/" | "%" } factor }* */
-  def term: Parser[Expr] = factor ~ opt(("*" | "/" | "%") ~ factor) ^^ {
-    case factor ~ None => factor
-    case factor ~ Some(op ~ next) =>
-      if op == "*" then Times(factor, next)
-      else if op == "/" then Div(factor, next)
-      else Mod(factor, next)
-  }
+  def term: Parser[Expr] = chainl1(factor, mulOp)
 
-  /** factor ::= ident | number | "+" factor | "-" factor | "(" expr ")" */
-  def factor: Parser[Expr] = 
+  /** factor ::= ident | number | prefixOp factor | "(" expr ")" */
+  def factor: Parser[Expr] = (
     ident ^^ Variable
     | wholeNumber ^^ (n => Constant(n.toInt))
-    | "+" ~> factor
-    | "-" ~> factor ^^ UMinus
+    | prefixOp ~ factor ^^ { case op ~ e => op(e) }
     | "(" ~> expr <~ ")"
+  )
+
+  /** Operator parsers */
+  def addOp: Parser[(Expr, Expr) => Expr] = (
+    "+" ^^^ { (a: Expr, b: Expr) => Plus(a, b) }
+    | "-" ^^^ { (a: Expr, b: Expr) => Minus(a, b) }
+  )
+
+  def mulOp: Parser[(Expr, Expr) => Expr] = (
+    "*" ^^^ { (a: Expr, b: Expr) => Times(a, b) }
+    | "/" ^^^ { (a: Expr, b: Expr) => Div(a, b) }
+    | "%" ^^^ { (a: Expr, b: Expr) => Mod(a, b) }
+  )
+
+  def prefixOp: Parser[Expr => Expr] = (
+    "+" ^^^ { e: Expr => e }
+    | "-" ^^^ { e: Expr => UMinus(e) }
+  )
+
+  /** Helper for left-associative binary operators */
+  def chainl1[T](p: Parser[T], op: Parser[(T, T) => T]): Parser[T] =
+    p ~ rep(op ~ p) ^^ {
+      case first ~ rest => rest.foldLeft(first) {
+        case (acc, op ~ next) => op(acc, next)
+      }
+    }
 
   /** exprStmt ::= expr ";" */
   def exprStmt: Parser[Expr] = 
