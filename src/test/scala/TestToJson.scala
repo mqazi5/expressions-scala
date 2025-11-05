@@ -9,66 +9,83 @@ import org.json4s.native.JsonMethods.*
 class TestToJson extends AnyFunSuite:
   
   // Helper method to pretty print JSON
+  def normalizeJson(s: String): String =
+    s.replaceAll("\\s+", "")
+
   def prettyJson(value: Any): String = 
     pretty(render(toJson(value.asInstanceOf[Expr | Statement])))
 
   test("toJson handles simple constant") {
     val expr = Constant(5)
     val expected = """{
-      |  "Constant" : 5
+      |  "type": "Constant",
+      |  "value": 5
       |}""".stripMargin
-    assert(prettyJson(expr) == expected)
+    assert(normalizeJson(prettyJson(expr)) == normalizeJson(expected))
   }
 
   test("toJson handles variable") {
     val expr = Variable("x")
     val expected = """{
-      |  "Variable" : "x"
+      |  "type": "Variable",
+      |  "name": "x"
       |}""".stripMargin
-    assert(prettyJson(expr) == expected)
+    assert(normalizeJson(prettyJson(expr)) == normalizeJson(expected))
   }
 
   test("toJson handles binary operation") {
     val expr = Plus(Constant(3), Times(Variable("x"), Constant(2)))
     val expected = """{
-      |  "Plus" : [ {
-      |    "Constant" : 3
-      |  }, {
-      |    "Times" : [ {
-      |      "Variable" : "x"
-      |    }, {
-      |      "Constant" : 2
-      |    } ]
-      |  } ]
+      |  "type": "Plus",
+      |  "left": {
+      |    "type": "Constant",
+      |    "value": 3
+      |  },
+      |  "right": {
+      |    "type": "Times",
+      |    "left": {
+      |      "type": "Variable",
+      |      "name": "x"
+      |    },
+      |    "right": {
+      |      "type": "Constant",
+      |      "value": 2
+      |    }
+      |  }
       |}""".stripMargin
-    assert(prettyJson(expr) == expected)
+    assert(normalizeJson(prettyJson(expr)) == normalizeJson(expected))
   }
 
   test("toJson handles unary minus") {
     val expr = UMinus(Constant(5))
     val expected = """{
-      |  "UMinus" : {
-      |    "Constant" : 5
+      |  "type": "UMinus",
+      |  "expr": {
+      |    "type": "Constant",
+      |    "value": 5
       |  }
       |}""".stripMargin
-    assert(prettyJson(expr) == expected)
+    assert(normalizeJson(prettyJson(expr)) == normalizeJson(expected))
   }
 
   test("toJson handles assignment") {
     val stmt = Assignment("x", Plus(Variable("x"), Constant(1)))
     val expected = """{
-      |  "Assignment" : {
-      |    "variable" : "x",
-      |    "expr" : {
-      |      "Plus" : [ {
-      |        "Variable" : "x"
-      |      }, {
-      |        "Constant" : 1
-      |      } ]
+      |  "type": "Assignment",
+      |  "variable": "x",
+      |  "expr": {
+      |    "type": "Plus",
+      |    "left": {
+      |      "type": "Variable",
+      |      "name": "x"
+      |    },
+      |    "right": {
+      |      "type": "Constant",
+      |      "value": 1
       |    }
       |  }
       |}""".stripMargin
-    assert(prettyJson(stmt) == expected)
+    assert(normalizeJson(prettyJson(stmt)) == normalizeJson(expected))
   }
 
   test("toJson handles if statement") {
@@ -78,24 +95,25 @@ class TestToJson extends AnyFunSuite:
       None
     )
     val expected = """{
-      |  "If" : {
-      |    "condition" : {
-      |      "Variable" : "x"
-      |    },
-      |    "thenBlock" : {
-      |      "Block" : [ {
-      |        "Assignment" : {
-      |          "variable" : "y",
-      |          "expr" : {
-      |            "Constant" : 1
-      |          }
-      |        }
-      |      } ]
-      |    },
-      |    "elseBlock" : null
-      |  }
+      |  "type": "If",
+      |  "condition": {
+      |    "type": "Variable",
+      |    "name": "x"
+      |  },
+      |  "thenBlock": {
+      |    "type": "Block",
+      |    "statements": [{
+      |      "type": "Assignment",
+      |      "variable": "y",
+      |      "expr": {
+      |        "type": "Constant",
+      |        "value": 1
+      |      }
+      |    }]
+      |  },
+      |  "elseBlock": null
       |}""".stripMargin
-    assert(prettyJson(stmt) == expected)
+    assert(normalizeJson(prettyJson(stmt)) == normalizeJson(expected))
   }
 
   test("toJson handles while loop") {
@@ -106,27 +124,31 @@ class TestToJson extends AnyFunSuite:
       ))
     )
     val expected = """{
-      |  "While" : {
-      |    "condition" : {
-      |      "Variable" : "x"
-      |    },
-      |    "body" : {
-      |      "Block" : [ {
-      |        "Assignment" : {
-      |          "variable" : "x",
-      |          "expr" : {
-      |            "Minus" : [ {
-      |              "Variable" : "x"
-      |            }, {
-      |              "Constant" : 1
-      |            } ]
-      |          }
+      |  "type": "While",
+      |  "condition": {
+      |    "type": "Variable",
+      |    "name": "x"
+      |  },
+      |  "body": {
+      |    "type": "Block",
+      |    "statements": [{
+      |      "type": "Assignment",
+      |      "variable": "x",
+      |      "expr": {
+      |        "type": "Minus",
+      |        "left": {
+      |          "type": "Variable",
+      |          "name": "x"
+      |        },
+      |        "right": {
+      |          "type": "Constant",
+      |          "value": 1
       |        }
-      |      } ]
-      |    }
+      |      }
+      |    }]
       |  }
       |}""".stripMargin
-    assert(prettyJson(stmt) == expected)
+    assert(normalizeJson(prettyJson(stmt)) == normalizeJson(expected))
   }
 
   test("toJson handles complex nested structure") {
@@ -148,59 +170,69 @@ class TestToJson extends AnyFunSuite:
       )
     ))
     val expected = """{
-      |  "Block" : [ {
-      |    "Assignment" : {
-      |      "variable" : "x",
-      |      "expr" : {
-      |        "Constant" : 5
-      |      }
+      |  "type": "Block",
+      |  "statements": [{
+      |    "type": "Assignment",
+      |    "variable": "x",
+      |    "expr": {
+      |      "type": "Constant",
+      |      "value": 5
       |    }
       |  }, {
-      |    "If" : {
-      |      "condition" : {
-      |        "Plus" : [ {
-      |          "Variable" : "x"
-      |        }, {
-      |          "Constant" : 0
-      |        } ]
+      |    "type": "If",
+      |    "condition": {
+      |      "type": "Plus",
+      |      "left": {
+      |        "type": "Variable",
+      |        "name": "x"
       |      },
-      |      "thenBlock" : {
-      |        "Block" : [ {
-      |          "While" : {
-      |            "condition" : {
-      |              "Variable" : "x"
-      |            },
-      |            "body" : {
-      |              "Block" : [ {
-      |                "Assignment" : {
-      |                  "variable" : "x",
-      |                  "expr" : {
-      |                    "Minus" : [ {
-      |                      "Variable" : "x"
-      |                    }, {
-      |                      "Constant" : 1
-      |                    } ]
-      |                  }
-      |                }
-      |              } ]
-      |            }
-      |          }
-      |        } ]
-      |      },
-      |      "elseBlock" : {
-      |        "Block" : [ {
-      |          "Assignment" : {
-      |            "variable" : "x",
-      |            "expr" : {
-      |              "Constant" : 0
-      |            }
-      |          }
-      |        } ]
+      |      "right": {
+      |        "type": "Constant",
+      |        "value": 0
       |      }
+      |    },
+      |    "thenBlock": {
+      |      "type": "Block",
+      |      "statements": [{
+      |        "type": "While",
+      |        "condition": {
+      |          "type": "Variable",
+      |          "name": "x"
+      |        },
+      |        "body": {
+      |          "type": "Block",
+      |          "statements": [{
+      |            "type": "Assignment",
+      |            "variable": "x",
+      |            "expr": {
+      |              "type": "Minus",
+      |              "left": {
+      |                "type": "Variable",
+      |                "name": "x"
+      |              },
+      |              "right": {
+      |                "type": "Constant",
+      |                "value": 1
+      |              }
+      |            }
+      |          }]
+      |        }
+      |      }]
+      |    },
+      |    "elseBlock": {
+      |      "type": "Block",
+      |      "statements": [{
+      |        "type": "Assignment",
+      |        "variable": "x",
+      |        "expr": {
+      |          "type": "Constant",
+      |          "value": 0
+      |        }
+      |      }]
       |    }
-      |  } ]
+      |  }]
       |}""".stripMargin
-    assert(prettyJson(stmt) == expected)
+    assert(normalizeJson(prettyJson(stmt)) == normalizeJson(expected))
   }
 
 end TestToJson

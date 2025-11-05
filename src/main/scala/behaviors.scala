@@ -92,32 +92,38 @@ object behaviors:
   /** Converts an AST to a JSON representation */
   def toJson(tree: Expr | Statement): JValue = tree match
     // Expression cases
-    case Constant(c) => "Constant" -> c
-    case Variable(name) => "Variable" -> name
-    case UMinus(r) => "UMinus" -> toJson(r)
-    case Plus(l, r) => "Plus" -> List(toJson(l), toJson(r))
-    case Minus(l, r) => "Minus" -> List(toJson(l), toJson(r))
-    case Times(l, r) => "Times" -> List(toJson(l), toJson(r))
-    case Div(l, r) => "Div" -> List(toJson(l), toJson(r))
-    case Mod(l, r) => "Mod" -> List(toJson(l), toJson(r))
+    case Constant(c) => 
+      ("type" -> "Constant") ~ ("value" -> c)
+    case Variable(name) => 
+      ("type" -> "Variable") ~ ("name" -> name)
+    case UMinus(r) => 
+      ("type" -> "UMinus") ~ ("expr" -> toJson(r))
+    case Plus(l, r) => 
+      ("type" -> "Plus") ~ ("left" -> toJson(l)) ~ ("right" -> toJson(r))
+    case Minus(l, r) => 
+      ("type" -> "Minus") ~ ("left" -> toJson(l)) ~ ("right" -> toJson(r))
+    case Times(l, r) => 
+      ("type" -> "Times") ~ ("left" -> toJson(l)) ~ ("right" -> toJson(r))
+    case Div(l, r) => 
+      ("type" -> "Div") ~ ("left" -> toJson(l)) ~ ("right" -> toJson(r))
+    case Mod(l, r) => 
+      ("type" -> "Mod") ~ ("left" -> toJson(l)) ~ ("right" -> toJson(r))
     
     // Statement cases
     case Block(statements) => 
-      "Block" -> statements.map(toJson)
+      ("type" -> "Block") ~ ("statements" -> statements.map(toJson))
     case ExpressionStmt(expr) => 
-      "ExpressionStmt" -> toJson(expr)
+      ("type" -> "ExpressionStmt") ~ ("expr" -> toJson(expr))
     case Assignment(variable, expr) => 
-      "Assignment" -> ("variable" -> variable) ~ ("expr" -> toJson(expr))
+      ("type" -> "Assignment") ~ ("variable" -> variable) ~ ("expr" -> toJson(expr))
     case If(condition, thenBlock, elseBlock) =>
-      "If" -> (
-        ("condition" -> toJson(condition)) ~
-        ("thenBlock" -> toJson(thenBlock)) ~
-        ("elseBlock" -> elseBlock.map(toJson))
-      )
+      ("type" -> "If") ~
+      ("condition" -> toJson(condition)) ~
+      ("thenBlock" -> toJson(thenBlock)) ~
+      ("elseBlock" -> elseBlock.map(toJson))
     case While(condition, body) =>
-      "While" -> (
-        ("condition" -> toJson(condition)) ~
-        ("body" -> toJson(body))
-      )
+      ("type" -> "While") ~
+      ("condition" -> toJson(condition)) ~
+      ("body" -> toJson(body))
 
 end behaviors
