@@ -3,7 +3,6 @@ package edu.luc.cs.laufer.cs371.expressions
 import org.scalatest.funsuite.AnyFunSuite
 import scala.util.{ Success, Failure }
 import TestFixtures.*
-import Statement.*
 import Expr.*
 import behaviors.*
 
@@ -13,18 +12,18 @@ class TestParser extends AnyFunSuite:
 
   // Helper method to parse expressions
   def parseExpr(input: String): Expr =
-    parser.parseAll(parser.expr, input) match
+    parser.parseAll(parser.arithmetic, input) match
       case parser.Success(result, _) => result
       case parser.NoSuccess(msg, _)  => throw Exception(s"Parse error: $msg")
 
   // Helper method to parse statements
-  def parseStmt(input: String): Statement =
-    parser.parseAll(parser.statement, input) match
+  def parseStmt(input: String): Expr =
+    parser.parseAll(parser.expr, input) match
       case parser.Success(result, _) => result
       case parser.NoSuccess(msg, _)  => throw Exception(s"Parse error: $msg")
 
-  // Helper method to parse REPL input (multiple statements)
-  def parseRepl(input: String): Statement =
+  // Helper method to parse REPL input (multiple expressions)
+  def parseRepl(input: String): Expr =
     parser.parseAll(parser.repl, input) match
       case parser.Success(result, _) => result
       case parser.NoSuccess(msg, _)  => throw Exception(s"Parse error: $msg")
@@ -63,14 +62,13 @@ class TestParser extends AnyFunSuite:
   }
 
   test("parser handles assignment") {
-    assert(parseStmt("x = 5;") == 
-      Assignment("x", Constant(5)))
+    assert(parseStmt("x = 5;") == Assignment("x", Constant(5)))
   }
 
   test("parser handles simple if statement") {
-    val input = """if (x > 0) { y = 1; }"""
+    val input = """if (x) { y = 1; }"""
     val expected = If(
-      Plus(Variable("x"), Constant(0)),
+      Variable("x"),
       Block(List(Assignment("y", Constant(1)))),
       None
     )
@@ -79,14 +77,14 @@ class TestParser extends AnyFunSuite:
 
   test("parser handles if-else statement") {
     val input = """
-      if (x > 0) {
+      if (x) {
         y = 1;
       } else {
         y = -1;
       }
     """
     val expected = If(
-      Plus(Variable("x"), Constant(0)),
+      Variable("x"),
       Block(List(Assignment("y", Constant(1)))),
       Some(Block(List(Assignment("y", UMinus(Constant(1))))))
     )
@@ -95,12 +93,12 @@ class TestParser extends AnyFunSuite:
 
   test("parser handles while loop") {
     val input = """
-      while (x > 0) {
+      while (x) {
         x = x - 1;
       }
     """
     val expected = While(
-      Plus(Variable("x"), Constant(0)),
+      Variable("x"),
       Block(List(
         Assignment("x", Minus(Variable("x"), Constant(1)))
       ))
@@ -108,7 +106,7 @@ class TestParser extends AnyFunSuite:
     assert(parseStmt(input) == expected)
   }
 
-  test("parser handles block of statements") {
+  test("parser handles block of expressions") {
     val input = """
       {
         x = 5;
@@ -122,12 +120,12 @@ class TestParser extends AnyFunSuite:
     assert(parseStmt(input) == expected)
   }
 
-  // Test REPL-style parsing (multiple statements)
-  test("parser handles multiple statements") {
+  // Test REPL-style parsing (multiple expressions)
+  test("parser handles multiple expressions") {
     val input = """
       x = 5;
       y = 10;
-      while (x > 0) {
+      while (x) {
         y = y + x;
         x = x - 1;
       }
@@ -136,7 +134,7 @@ class TestParser extends AnyFunSuite:
       Assignment("x", Constant(5)),
       Assignment("y", Constant(10)),
       While(
-        Plus(Variable("x"), Constant(0)),
+        Variable("x"),
         Block(List(
           Assignment("y", Plus(Variable("y"), Variable("x"))),
           Assignment("x", Minus(Variable("x"), Constant(1)))
@@ -150,7 +148,7 @@ class TestParser extends AnyFunSuite:
     val input = """
       n = 5;
       result = 1;
-      while (n > 0) {
+      while (n) {
         result = result * n;
         n = n - 1;
       }
@@ -159,7 +157,7 @@ class TestParser extends AnyFunSuite:
       Assignment("n", Constant(5)),
       Assignment("result", Constant(1)),
       While(
-        Plus(Variable("n"), Constant(0)),
+        Variable("n"),
         Block(List(
           Assignment("result", Times(Variable("result"), Variable("n"))),
           Assignment("n", Minus(Variable("n"), Constant(1)))
@@ -236,7 +234,7 @@ class TestParser extends AnyFunSuite:
     verifyRoundTrip("if (1) { x = 2; } else { x = 3; }")
   }
 
-  test("parser handles block with multiple statements") {
+  test("parser handles block with multiple expressions") {
     val stmt = parseRepl("{ r = r + x; y = y + 1; }")
     assert(stmt == Block(List(
       Block(List(
@@ -247,7 +245,7 @@ class TestParser extends AnyFunSuite:
     verifyRoundTrip("{ r = r + x; y = y + 1; }")
   }
 
-  test("parser handles while with multiple statements") {
+  test("parser handles while with multiple expressions") {
     val stmt = parseRepl("while (y) { r = r + x; y = y - 1; }")
     assert(stmt == Block(List(
       While(

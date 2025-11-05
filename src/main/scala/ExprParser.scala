@@ -2,89 +2,94 @@ package edu.luc.cs.laufer.cs371.expressions
 
 import scala.util.parsing.combinator.JavaTokenParsers
 import Expr.*
-import Statement.*
 
 /**
  * Parser for a simple imperative language with arithmetic expressions.
  * Grammar:
- *   repl       ::= statement*
- *   statement  ::= expression ";" | assignment | if | while | block
- *   assignment ::= ident "=" expression ";"
- *   if        ::= "if" "(" expression ")" block [ "else" block ]
- *   while     ::= "while" "(" expression ")" block
- *   block     ::= "{" statement* "}"
- *   expr      ::= term { { "+" | "-" } term }*
+ *   repl       ::= expr*
+ *   expr       ::= term { { "+" | "-" } term }*
+ *                | exprStmt | assignment | if | while | block
+ *   exprStmt   ::= expr ";"
+ *   assignment ::= ident "=" expr ";"
+ *   if        ::= "if" "(" expr ")" block [ "else" block ]
+ *   while     ::= "while" "(" expr ")" block
+ *   block     ::= "{" expr* "}"
  *   term      ::= factor { { "*" | "/" | "%" } factor }*
  *   factor    ::= ident | number | "+" factor | "-" factor | "(" expr ")"
  *   ident     ::= [a-zA-Z][a-zA-Z0-9_]*
  */
-trait ExprParser[E, S] extends JavaTokenParsers:
-
+trait ExprParser extends JavaTokenParsers:
   /**
    * Enable missing typesafe equality for `~`.
    * TODO remove once the combinator parser library provides this.
    */
   given [A, B](using CanEqual[A, A], CanEqual[B, B]): CanEqual[A ~ B, A ~ B] = CanEqual.derived
 
-  /** repl ::= statement* */
-  def repl: Parser[S] = rep(statement) ^^ onBlock
+  /** repl ::= expr* */
+  def repl: Parser[Expr] = rep(expr) ^^ (exprs => Block(exprs))
 
-  /** statement ::= expression ";" | assignment | if | while | block */
-  def statement: Parser[S] = 
-    (expr <~ ";") ^^ onExpressionStmt
+  /** expr ::= term { { "+" | "-" } term }* | exprStmt | assignment | if | while | block */
+  def expr: Parser[Expr] = 
+    arithmetic
+    | exprStmt
     | assignment
     | ifStatement
     | whileLoop
     | block
 
-  /** assignment ::= ident "=" expression ";" */
-  def assignment: Parser[S] =
-    ident ~ ("=" ~> expr <~ ";") ^^ onAssignment
-
-  /** if ::= "if" "(" expression ")" block [ "else" block ] */
-  def ifStatement: Parser[S] =
-    ("if" ~> "(" ~> expr <~ ")") ~ block ~ opt("else" ~> block) ^^ onIf
-
-  /** while ::= "while" "(" expression ")" block */
-  def whileLoop: Parser[S] =
-    ("while" ~> "(" ~> expr <~ ")") ~ block ^^ onWhile
-
-  /** block ::= "{" statement* "}" */
-  def block: Parser[S] =
-    "{" ~> rep(statement) <~ "}" ^^ onBlock
-
-  /** expr ::= term { { "+" | "-" } term }* */
-  def expr: Parser[E] = term ~! opt(("+" | "-") ~ term) ^^ onExpr
+  /** arithmetic ::= term { { "+" | "-" } term }* */
+  def arithmetic: Parser[Expr] = term ~ opt(("+" | "-") ~ term) ^^ {
+    case base ~ None => base
+    case base ~ Some(op ~ next) => 
+      if op == "+" then Plus(base, next)
+      else Minus(base, next)
+  }
 
   /** term ::= factor { { "*" | "/" | "%" } factor }* */
-  def term: Parser[E] = factor ~! opt(("*" | "/" | "%") ~ factor) ^^ onTerm
+  def term: Parser[Expr] = factor ~ opt(("*" | "/" | "%") ~ factor) ^^ {
+    case factor ~ None => factor
+    case factor ~ Some(op ~ next) =>
+      if op == "*" then Times(factor, next)
+      else if op == "/" then Div(factor, next)
+      else Mod(factor, next)
+  }
 
-  /** factor ::= ident | wholeNumber | "+" factor | "-" factor | "(" expr ")" */
-  def factor: Parser[E] = 
-    ident ^^ onVariable
-    | wholeNumber ^^ onNumber
-    | "+" ~> factor ^^ onPlusFactor
-    | "-" ~> factor ^^ onMinusFactor
-    | "(" ~> expr <~ ")" ^^ onParenExpr
+  /** factor ::= ident | number | "+" factor | "-" factor | "(" expr ")" */
+  def factor: Parser[Expr] = 
+    ident ^^ Variable
+    | wholeNumber ^^ (n => Constant(n.toInt))
+    | "+" ~> factor
+    | "-" ~> factor ^^ UMinus
+    | "(" ~> expr <~ ")"
+
+  /** exprStmt ::= expr ";" */
+  def exprStmt: Parser[Expr] = 
+    expr <~ ";" ^^ ExpressionStmt
+
+  /** assignment ::= ident "=" expr ";" */
+  def assignment: Parser[Expr] =
+    ident ~ ("=" ~> expr <~ ";") ^^ {
+      case variable ~ expr => Assignment(variable, expr)
+    }
+
+  /** if ::= "if" "(" expr ")" block [ "else" block ] */
+  def ifStatement: Parser[Expr] =
+    ("if" ~> "(" ~> expr <~ ")") ~ block ~ opt("else" ~> block) ^^ {
+      case cond ~ thenBlock ~ elseBlock => If(cond, thenBlock, elseBlock)
+    }
+
+  /** while ::= "while" "(" expr ")" block */
+  def whileLoop: Parser[Expr] =
+    ("while" ~> "(" ~> expr <~ ")") ~ block ^^ {
+      case cond ~ body => While(cond, body)
+    }
+
+  /** block ::= "{" expr* "}" */
+  def block: Parser[Expr] =
+    "{" ~> rep(expr) <~ "}" ^^ Block
 
   /** ident ::= [a-zA-Z][a-zA-Z0-9_]* */
   override def ident: Parser[String] = 
     """[a-zA-Z][a-zA-Z0-9_]*""".r
-
-  // Expression-related abstract methods
-  def onExpr: E ~ Option[String ~ E] => E
-  def onTerm: E ~ Option[String ~ E] => E
-  def onNumber: String => E
-  def onPlusFactor: E => E
-  def onMinusFactor: E => E
-  def onParenExpr: E => E
-  def onVariable: String => E
-
-  // Statement-related abstract methods
-  def onExpressionStmt: E => S
-  def onAssignment: String ~ E => S
-  def onIf: E ~ S ~ Option[S] => S
-  def onWhile: E ~ S => S
-  def onBlock: List[S] => S
   
 end ExprParser

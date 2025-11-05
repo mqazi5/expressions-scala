@@ -5,7 +5,6 @@ import behaviors.*
 import org.json4s.native.JsonMethods.*
 import scala.collection.mutable
 import Expr.*
-import Statement.*
 
 object REPL:
   def main(args: Array[String]): Unit =
@@ -49,39 +48,40 @@ object REPL:
           rv <- evaluateInEnv(r)
           if rv != 0
         yield lv % rv
-
-    def executeStatement(stmt: Statement): Unit = stmt match
-      case Block(statements) =>
-        statements.foreach(executeStatement)
-      
+      case Block(exprs) =>
+        var result: Option[Int] = None
+        for expr <- exprs do
+          result = evaluateInEnv(expr)
+        result
       case ExpressionStmt(expr) =>
         evaluateInEnv(expr) foreach { result =>
           println(s"Result: $result")
         }
-      
+        None
       case Assignment(variable, expr) =>
         evaluateInEnv(expr) foreach { value =>
           env(variable) = value
           println(s"$variable = $value")
         }
-      
+        None
       case If(condition, thenBlock, elseBlock) =>
-        evaluateInEnv(condition) foreach { value =>
+        evaluateInEnv(condition) flatMap { value =>
           if value != 0 then
-            executeStatement(thenBlock)
+            evaluateInEnv(thenBlock)
           else
-            elseBlock.foreach(executeStatement)
+            elseBlock.flatMap(evaluateInEnv)
         }
-      
       case While(condition, body) =>
+        var lastResult: Option[Int] = None
         var continue = true
         while continue do
           evaluateInEnv(condition) foreach { value =>
             if value != 0 then
-              executeStatement(body)
+              lastResult = evaluateInEnv(body)
             else
               continue = false
           }
+        lastResult
     
     var continue = true
     while continue do
@@ -94,35 +94,23 @@ object REPL:
         try
           println(s"You entered: $input")
           
-          // Try parsing as expression first
-          val result = ASTBuilder.parseAll(ASTBuilder.expr, input) match
+          // Parse and evaluate input
+          ASTBuilder.parseAll(ASTBuilder.expr, input) match
             case ASTBuilder.Success(expr, _) =>
-              // Show parsed expression
-              println("Parsed expression:")
+              // Show parsed expression/statement
+              println("Parsed:")
               println(expr)
-              // Evaluate expression
-              evaluateInEnv(expr) match
-                case Some(value) => println(s"Result: $value")
-                case None => println("Could not evaluate expression (undefined variables)")
+              // Evaluate
+              evaluateInEnv(expr)
+              // Show current environment
+              if env.nonEmpty then
+                println("\nCurrent variable values:")
+                env.toList.sortBy(_._1).foreach { (name, value) =>
+                  println(s"$name = $value")
+                }
             
-            case ASTBuilder.NoSuccess(_, _) =>
-              // Try parsing as statements
-              ASTBuilder.parseAll(ASTBuilder.repl, input) match
-                case ASTBuilder.Success(stmts, _) =>
-                  // Show parsed statements
-                  println("Parsed statements:")
-                  println(stmts)
-                  // Execute statements
-                  executeStatement(stmts)
-                  // Show current environment
-                  if env.nonEmpty then
-                    println("\nCurrent variable values:")
-                    env.toList.sortBy(_._1).foreach { (name, value) =>
-                      println(s"$name = $value")
-                    }
-                
-                case ASTBuilder.NoSuccess(msg, next) =>
-                  throw Exception(s"Parse error near '${next.pos.longString}': $msg")
+            case ASTBuilder.NoSuccess(msg, next) =>
+              throw Exception(s"Parse error near '${next.pos.longString}': $msg")
           
         catch
           case e: Exception =>
