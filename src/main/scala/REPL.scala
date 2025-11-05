@@ -4,6 +4,8 @@ import scala.io.StdIn.readLine
 import behaviors.*
 import org.json4s.native.JsonMethods.*
 import scala.collection.mutable
+import Expr.*
+import Statement.*
 
 object REPL:
   def main(args: Array[String]): Unit =
