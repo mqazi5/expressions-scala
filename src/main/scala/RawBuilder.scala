@@ -37,11 +37,12 @@ object RawBuilder extends ExprParser[Expr, Statement]:
   
   def onIf: Expr ~ Statement ~ Option[Statement] => Statement = {
     case condition ~ thenBlock ~ elseBlock => 
-      val thenBlockAsBlock = thenBlock match
-        case b @ Block(_) => b
+      val thenBlockAsBlock: Block = thenBlock match {
+        case b: Block => b
         case other => Block(List(other))
-      val elseBlockAsBlock = elseBlock.map {
-        case b @ Block(_) => b
+      }
+      val elseBlockAsBlock: Option[Block] = elseBlock.map {
+        case b: Block => b
         case other => Block(List(other))
       }
       If(condition, thenBlockAsBlock, elseBlockAsBlock)
@@ -49,9 +50,10 @@ object RawBuilder extends ExprParser[Expr, Statement]:
   
   def onWhile: Expr ~ Statement => Statement = {
     case condition ~ body => 
-      val bodyAsBlock = body match
-        case b @ Block(_) => b
+      val bodyAsBlock: Block = body match {
+        case b: Block => b
         case other => Block(List(other))
+      }
       While(condition, bodyAsBlock)
   }
 
