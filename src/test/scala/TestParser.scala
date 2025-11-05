@@ -5,6 +5,7 @@ import scala.util.{ Success, Failure }
 import TestFixtures.*
 import Statement.*
 import Expr.*
+import behaviors.*
 
 class TestParser extends AnyFunSuite:
   
