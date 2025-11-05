@@ -168,4 +168,141 @@ class TestParser extends AnyFunSuite:
     assert(parseRepl(input) == expected)
   }
 
+  // Helper method to verify round-trip parsing
+  def verifyRoundTrip(input: String) =
+    val parsed = parseRepl(input)
+    val unparsed = unparse(parsed).trim
+    val reparsed = parseRepl(unparsed)
+    assert(parsed == reparsed)
+
+  // Helper method to test if parsing fails
+  def shouldFailToParse(input: String): Boolean =
+    !parser.parseAll(parser.repl, input).successful
+
+  // Additional Test Cases for Valid Input
+  test("parser handles simple assignment: x = 5;") {
+    val stmt = parseRepl("x = 5;")
+    assert(stmt == Block(List(Assignment("x", Constant(5)))))
+    verifyRoundTrip("x = 5;")
+  }
+
+  test("parser handles multiple assignments: x = 5; y = 7;") {
+    val stmt = parseRepl("x = 5; y = 7;")
+    assert(stmt == Block(List(
+      Assignment("x", Constant(5)),
+      Assignment("y", Constant(7))
+    )))
+    verifyRoundTrip("x = 5; y = 7;")
+  }
+
+  test("parser handles complex expression: ((1 + y2) - (3 * y4)) / 5;") {
+    val stmt = parseRepl("((1 + y2) - (3 * y4)) / 5;")
+    assert(stmt == Block(List(
+      ExpressionStmt(
+        Div(
+          Minus(
+            Plus(Constant(1), Variable("y2")),
+            Times(Constant(3), Variable("y4"))
+          ),
+          Constant(5)
+        )
+      )
+    )))
+    verifyRoundTrip("((1 + y2) - (3 * y4)) / 5;")
+  }
+
+  test("parser handles simple if with block: if (1) { x = 2; }") {
+    val stmt = parseRepl("if (1) { x = 2; }")
+    assert(stmt == Block(List(
+      If(
+        Constant(1),
+        Block(List(Assignment("x", Constant(2)))),
+        None
+      )
+    )))
+    verifyRoundTrip("if (1) { x = 2; }")
+  }
+
+  test("parser handles if-else with blocks") {
+    val stmt = parseRepl("if (1) { x = 2; } else { x = 3; }")
+    assert(stmt == Block(List(
+      If(
+        Constant(1),
+        Block(List(Assignment("x", Constant(2)))),
+        Some(Block(List(Assignment("x", Constant(3)))))
+      )
+    )))
+    verifyRoundTrip("if (1) { x = 2; } else { x = 3; }")
+  }
+
+  test("parser handles block with multiple statements") {
+    val stmt = parseRepl("{ r = r + x; y = y + 1; }")
+    assert(stmt == Block(List(
+      Block(List(
+        Assignment("r", Plus(Variable("r"), Variable("x"))),
+        Assignment("y", Plus(Variable("y"), Constant(1)))
+      ))
+    )))
+    verifyRoundTrip("{ r = r + x; y = y + 1; }")
+  }
+
+  test("parser handles while with multiple statements") {
+    val stmt = parseRepl("while (y) { r = r + x; y = y - 1; }")
+    assert(stmt == Block(List(
+      While(
+        Variable("y"),
+        Block(List(
+          Assignment("r", Plus(Variable("r"), Variable("x"))),
+          Assignment("y", Minus(Variable("y"), Constant(1)))
+        ))
+      )
+    )))
+    verifyRoundTrip("while (y) { r = r + x; y = y - 1; }")
+  }
+
+  // Test Cases for Invalid Input
+  test("parser rejects missing semicolon") {
+    assert(shouldFailToParse("x = 5"))
+  }
+
+  test("parser rejects incomplete if") {
+    assert(shouldFailToParse("if (x) x = 5;"))
+  }
+
+  test("parser rejects missing braces") {
+    assert(shouldFailToParse("if (1) x = 2;"))
+  }
+
+  test("parser rejects missing parentheses") {
+    assert(shouldFailToParse("if 1 { x = 2; }"))
+  }
+
+  test("parser rejects incomplete while") {
+    assert(shouldFailToParse("while y { x = 1; }"))
+  }
+
+  test("parser rejects missing block") {
+    assert(shouldFailToParse("while (y) x = x - 1;"))
+  }
+
+  test("parser rejects incomplete assignment") {
+    assert(shouldFailToParse("x =;"))
+    assert(shouldFailToParse("x = "))
+  }
+
+  test("parser rejects missing condition") {
+    assert(shouldFailToParse("if () { x = 1; }"))
+    assert(shouldFailToParse("while () { x = 1; }"))
+  }
+
+  test("parser rejects unmatched braces") {
+    assert(shouldFailToParse("{ x = 1;"))
+    assert(shouldFailToParse("x = 1; }"))
+  }
+
+  test("parser rejects invalid variable names") {
+    assert(shouldFailToParse("1x = 5;"))
+    assert(shouldFailToParse("$ = 5;"))
+  }
+
 end TestParser

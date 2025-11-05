@@ -111,4 +111,136 @@ class TestUnparser extends AnyFunSuite:
     assert(unparse(stmt) == expected)
   }
 
+  // Additional test cases for unparsing expressions and statements
+  test("unparsing single assignment") {
+    val stmt = Assignment("x", Constant(5))
+    assert(unparse(stmt) == "x = 5;")
+  }
+
+  test("unparsing multiple assignments") {
+    val stmt = Block(List(
+      Assignment("x", Constant(5)),
+      Assignment("y", Constant(7))
+    ))
+    assert(unparse(stmt).trim == """{
+      |  x = 5;
+      |  y = 7;
+      |}""".stripMargin)
+  }
+
+  test("unparsing complex expression with multiple operators") {
+    val expr = Div(
+      Minus(
+        Plus(Constant(1), Variable("y2")),
+        Times(Constant(3), Variable("y4"))
+      ),
+      Constant(5)
+    )
+    assert(unparse(expr) == "((1 + y2) - (3 * y4)) / 5")
+  }
+
+  test("unparsing assignment with complex expression") {
+    val stmt = Assignment("x",
+      Div(
+        Minus(
+          Plus(Constant(1), Variable("y2")),
+          Times(Constant(3), Variable("y4"))
+        ),
+        Constant(5)
+      )
+    )
+    assert(unparse(stmt) == "x = ((1 + y2) - (3 * y4)) / 5;")
+  }
+
+  test("unparsing simple if with block") {
+    val stmt = If(
+      Constant(1),
+      Block(List(Assignment("x", Constant(2)))),
+      None
+    )
+    assert(unparse(stmt).trim == """if (1) {
+      |  x = 2;
+      |} else {
+      |}""".stripMargin)
+  }
+
+  test("unparsing if-else with blocks") {
+    val stmt = If(
+      Constant(1),
+      Block(List(Assignment("x", Constant(2)))),
+      Some(Block(List(Assignment("x", Constant(3)))))
+    )
+    assert(unparse(stmt).trim == """if (1) {
+      |  x = 2;
+      |} else {
+      |  x = 3;
+      |}""".stripMargin)
+  }
+
+  test("unparsing block with multiple statements and proper indentation") {
+    val stmt = Block(List(
+      Assignment("r", Plus(Variable("r"), Variable("x"))),
+      Assignment("y", Plus(Variable("y"), Constant(1)))
+    ))
+    assert(unparse(stmt).trim == """{
+      |  r = r + x;
+      |  y = y + 1;
+      |}""".stripMargin)
+  }
+
+  test("unparsing if with multiple statements in block") {
+    val stmt = If(
+      Constant(4),
+      Block(List(
+        Assignment("r", Plus(Variable("r"), Variable("x"))),
+        Assignment("y", Plus(Variable("y"), Constant(1)))
+      )),
+      None
+    )
+    assert(unparse(stmt).trim == """if (4) {
+      |  r = r + x;
+      |  y = y + 1;
+      |} else {
+      |}""".stripMargin)
+  }
+
+  test("unparsing while with multiple statements and proper indentation") {
+    val stmt = While(
+      Variable("y"),
+      Block(List(
+        Assignment("r", Plus(Variable("r"), Variable("x"))),
+        Assignment("y", Minus(Variable("y"), Constant(1)))
+      ))
+    )
+    assert(unparse(stmt).trim == """while (y) {
+      |  r = r + x;
+      |  y = y - 1;
+      |}""".stripMargin)
+  }
+
+  test("unparsing nested if-while combination with proper indentation") {
+    val stmt = If(
+      Variable("x"),
+      Block(List(
+        Assignment("y", Constant(1)),
+        While(
+          Variable("y"),
+          Block(List(
+            Assignment("z", Plus(Variable("z"), Constant(1))),
+            Assignment("y", Minus(Variable("y"), Constant(1)))
+          ))
+        )
+      )),
+      None
+    )
+    assert(unparse(stmt).trim == """if (x) {
+      |  y = 1;
+      |  while (y) {
+      |    z = z + 1;
+      |    y = y - 1;
+      |  }
+      |} else {
+      |}""".stripMargin)
+  }
+
 end TestUnparser
