@@ -93,10 +93,9 @@ object behaviors:
     val indent = "  " * level // Two spaces per level
     
     def parenthesize(expr: Expr): String = expr match
-      case _: (Constant | Variable) => expr match
-        case Constant(c) => c.toString
-        case Variable(name) => name
-        case _ => throw IllegalArgumentException("impossible case")
+      case Constant(c) => c.toString
+      case Variable(name) => name
+      case UMinus(r) => s"(${unparse(expr, 0)})"
       case _ => s"(${unparse(expr, 0)})"
 
     def unparseBlockBody(b: Block, level: Int): String = b match
@@ -109,7 +108,7 @@ object behaviors:
       case Variable(name) => s"$indent$name"
       
       // Arithmetic expressions
-      case UMinus(r) => s"$indent-${parenthesize(r)}"
+      case UMinus(r) => s"$indent(-${unparse(r, 0)})"
       case Plus(l, r) => s"$indent${parenthesize(l)} + ${parenthesize(r)}"
       case Minus(l, r) => s"$indent${parenthesize(l)} - ${parenthesize(r)}"
       case Times(l, r) => s"$indent${parenthesize(l)} * ${parenthesize(r)}"
@@ -138,7 +137,7 @@ object behaviors:
           val stmtStrings = expressions.map(unparse(_, level + 1)).mkString("\n")
           s"$indent{\n$stmtStrings\n$indent}"
 
-  import org.json4s.JsonAST.JValue
+  import org.json4s.JsonAST.{JValue, JNull}
   import org.json4s.JsonDSL.*
 
   /** Converts an AST to a JSON representation */
@@ -174,7 +173,7 @@ object behaviors:
       ("type" -> "If") ~
       ("condition" -> toJson(condition)) ~
       ("thenBlock" -> toJson(thenBlock)) ~
-      ("elseBlock" -> (elseBlock match { case Some(b) => toJson(b); case None => null }))
+      ("elseBlock" -> elseBlock.map(toJson).getOrElse(JNull))
     case While(condition, body) =>
       ("type" -> "While") ~
       ("condition" -> toJson(condition)) ~
