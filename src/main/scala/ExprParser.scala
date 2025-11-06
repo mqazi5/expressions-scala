@@ -28,9 +28,9 @@ trait ExprParser extends JavaTokenParsers:
   /** repl ::= expr* */
   def repl: Parser[Expr] = rep(statement) ^^ (exprs => Block(exprs))
 
-  /** statement ::= exprStmt | assignment | if | while | block */
+  /** statement ::= assignment | exprStmt | if | while | block */
   def statement: Parser[Expr] = 
-    exprStmt | assignment | ifStatement | whileLoop | block
+    assignment | exprStmt | ifStatement | whileLoop | block
 
   /** expr ::= term { { "+" | "-" } term }* */
   def expr: Parser[Expr] = chainl1(term, addOp)
@@ -40,9 +40,9 @@ trait ExprParser extends JavaTokenParsers:
 
   /** factor ::= ident | number | prefixOp factor | "(" expr ")" */
   def factor: Parser[Expr] = (
-    ident ^^ Variable
+    prefixOp ~ factor ^^ { case op ~ e => op(e) }
     | wholeNumber ^^ (n => Constant(n.toInt))
-    | prefixOp ~ factor ^^ { case op ~ e => op(e) }
+    | ident ^^ Variable
     | "(" ~> expr <~ ")"
   )
 
@@ -83,7 +83,7 @@ trait ExprParser extends JavaTokenParsers:
 
   /** block ::= "{" expr* "}" */
   def block: Parser[Block] =
-    "{" ~> rep(expr) <~ "}" ^^ Block.apply
+    "{" ~> rep(statement) <~ "}" ^^ Block.apply
 
   /** if ::= "if" "(" expr ")" block [ "else" block ] */
   def ifStatement: Parser[Expr] =

@@ -99,6 +99,10 @@ object behaviors:
         case _ => throw IllegalArgumentException("impossible case")
       case _ => s"(${unparse(expr, 0)})"
 
+    def unparseBlockBody(b: Block, level: Int): String = b match
+      case Block(expressions) if expressions.isEmpty => ""
+      case Block(expressions) => expressions.map(unparse(_, level)).mkString("\n")
+
     e match
       // Value expressions
       case Constant(c) => s"$indent$c"
@@ -118,16 +122,16 @@ object behaviors:
       case Assignment(variable, expr) =>
         s"$indent$variable = ${unparse(expr, 0)};"
       case If(condition, thenBlock, elseBlock) =>
+        val thenBody = unparseBlockBody(thenBlock, level + 1)
+        val elseBody = elseBlock.map(b => unparseBlockBody(b, level + 1)).getOrElse("")
         val elseStr = elseBlock match
-          case Some(block) => s" else {\n${unparse(block, level + 1)}\n$indent}"
+          case Some(_) => s" else {\n${elseBody}\n$indent}"
           case None => s" else {\n$indent}"
-        s"""$indent if (${unparse(condition, 0)}) {
-           |${unparse(thenBlock, level + 1)}
-           |$indent}$elseStr""".stripMargin
+        s"${indent}if (${unparse(condition, 0)}) {\n${thenBody}\n${indent}}${elseStr}"
+
       case While(condition, body) =>
-        s"""$indent while (${unparse(condition, 0)}) {
-           |${unparse(body, level + 1)}
-           |$indent}""".stripMargin
+        val bodyStr = unparseBlockBody(body, level + 1)
+        s"${indent}while (${unparse(condition, 0)}) {\n${bodyStr}\n${indent}}"
       case Block(expressions) =>
         if expressions.isEmpty then s"$indent{}"
         else
@@ -161,7 +165,7 @@ object behaviors:
     
     // Statement expressions
     case Block(expressions) => 
-      ("type" -> "Block") ~ ("expressions" -> expressions.map(toJson))
+      ("type" -> "Block") ~ ("statements" -> expressions.map(toJson))
     case ExpressionStmt(expr) => 
       ("type" -> "ExpressionStmt") ~ ("expr" -> toJson(expr))
     case Assignment(variable, expr) => 
@@ -170,7 +174,7 @@ object behaviors:
       ("type" -> "If") ~
       ("condition" -> toJson(condition)) ~
       ("thenBlock" -> toJson(thenBlock)) ~
-      ("elseBlock" -> elseBlock.map(toJson))
+      ("elseBlock" -> (elseBlock match { case Some(b) => toJson(b); case None => null }))
     case While(condition, body) =>
       ("type" -> "While") ~
       ("condition" -> toJson(condition)) ~
