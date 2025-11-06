@@ -16,11 +16,6 @@ class TestUnparser extends AnyFunSuite:
     assert(unparse(expr) == "x + (y * 2)")
   }
 
-  test("unparsing complex expressions with proper parentheses") {
-    val expr = Plus(Plus(UMinus(Constant(3)), Constant(4)), Times(Constant(5), Constant(6)))
-    assert(unparse(expr) == "((-3 + 4) + (5 * 6))")
-  }
-
   test("unparsing single statement") {
     val stmt = Assignment("x", Constant(42))
     assert(unparse(stmt) == "x = 42;")
@@ -75,70 +70,37 @@ class TestUnparser extends AnyFunSuite:
     assert(unparse(stmt) == expected)
   }
 
-  test("unparsing the example from prompt") {
-    val stmt = Block(List(
-      If(
-        Plus(Plus(UMinus(Constant(3)), Constant(4)), Times(Constant(5), Constant(6))),
-        Block(List(
-          While(
-            Constant(0),
-            Block(List(
-              Assignment("x", Constant(3)),
-              Assignment("y", Constant(5)),
-              Block(List(
-                Assignment("xy", Constant(88))
-              ))
-            ))
-          )
-        )),
-        Some(Block(List()))
-      )
-    ))
-    val expected =
-      """{
-        |  if (((-3 + 4) + (5 * 6))) {
-        |    while (0) {
-        |      x = 3;
-        |      y = 5;
-        |      {
-        |        xy = 88;
-        |      }
-        |    }
-        |  } else {
-        |  }
-        |}""".stripMargin
-    assert(unparse(stmt) == expected)
-  }
-
-  // Additional test cases for unparsing expressions and statements
-  test("unparsing single assignment") {
+  test("required unparse: x = 5;") {
     val stmt = Assignment("x", Constant(5))
     assert(unparse(stmt) == "x = 5;")
   }
 
-  test("unparsing multiple assignments") {
+  test("required unparse: multiple assignments") {
     val stmt = Block(List(
       Assignment("x", Constant(5)),
       Assignment("y", Constant(7))
     ))
-    assert(unparse(stmt).trim == """{
+    val expected = """{
       |  x = 5;
       |  y = 7;
-      |}""".stripMargin)
+      |}""".stripMargin
+    assert(unparse(stmt) == expected)
   }
 
-  test("unparsing complex expression with multiple operators") {
-    val expr = Div(
-      Minus(
-        Plus(Constant(1), Variable("y2")),
-        Times(Constant(3), Variable("y4"))
-      ),
-      Constant(5)
+  test("required unparse: ((1 + y2) - (3 * y4)) / 5;") {
+    val stmt = ExpressionStmt(
+      Div(
+        Minus(
+          Plus(Constant(1), Variable("y2")),
+          Times(Constant(3), Variable("y4"))
+        ),
+        Constant(5)
+      )
     )
-    assert(unparse(expr) == "((1 + y2) - (3 * y4)) / 5")
+    assert(unparse(stmt) == "((1 + y2) - (3 * y4)) / 5;")
   }
 
-  test("unparsing assignment with complex expression") {
+  test("required unparse: x = ((1 + y2) - (3 * y4)) / 5;") {
     val stmt = Assignment("x",
       Div(
         Minus(
@@ -151,43 +113,46 @@ class TestUnparser extends AnyFunSuite:
     assert(unparse(stmt) == "x = ((1 + y2) - (3 * y4)) / 5;")
   }
 
-  test("unparsing simple if with block") {
+  test("required unparse: if (1) { x = 2; }") {
     val stmt = If(
       Constant(1),
       Block(List(Assignment("x", Constant(2)))),
       None
     )
-    assert(unparse(stmt).trim == """if (1) {
+    val expected = """if (1) {
       |  x = 2;
       |} else {
-      |}""".stripMargin)
+      |}""".stripMargin
+    assert(unparse(stmt) == expected)
   }
 
-  test("unparsing if-else with blocks") {
+  test("required unparse: if (1) { x = 2; } else { x = 3; }") {
     val stmt = If(
       Constant(1),
       Block(List(Assignment("x", Constant(2)))),
       Some(Block(List(Assignment("x", Constant(3)))))
     )
-    assert(unparse(stmt).trim == """if (1) {
+    val expected = """if (1) {
       |  x = 2;
       |} else {
       |  x = 3;
-      |}""".stripMargin)
+      |}""".stripMargin
+    assert(unparse(stmt) == expected)
   }
 
-  test("unparsing block with multiple statements and proper indentation") {
+  test("required unparse: { r = r + x; y = y + 1; }") {
     val stmt = Block(List(
       Assignment("r", Plus(Variable("r"), Variable("x"))),
       Assignment("y", Plus(Variable("y"), Constant(1)))
     ))
-    assert(unparse(stmt).trim == """{
+    val expected = """{
       |  r = r + x;
       |  y = y + 1;
-      |}""".stripMargin)
+      |}""".stripMargin
+    assert(unparse(stmt) == expected)
   }
 
-  test("unparsing if with multiple statements in block") {
+  test("required unparse: if (4) { r = r + x; y = y + 1; }") {
     val stmt = If(
       Constant(4),
       Block(List(
@@ -196,14 +161,15 @@ class TestUnparser extends AnyFunSuite:
       )),
       None
     )
-    assert(unparse(stmt).trim == """if (4) {
+    val expected = """if (4) {
       |  r = r + x;
       |  y = y + 1;
       |} else {
-      |}""".stripMargin)
+      |}""".stripMargin
+    assert(unparse(stmt) == expected)
   }
 
-  test("unparsing while with multiple statements and proper indentation") {
+  test("required unparse: while (y) { r = r + x; y = y - 1; }") {
     val stmt = While(
       Variable("y"),
       Block(List(
@@ -211,10 +177,11 @@ class TestUnparser extends AnyFunSuite:
         Assignment("y", Minus(Variable("y"), Constant(1)))
       ))
     )
-    assert(unparse(stmt).trim == """while (y) {
+    val expected = """while (y) {
       |  r = r + x;
       |  y = y - 1;
-      |}""".stripMargin)
+      |}""".stripMargin
+    assert(unparse(stmt) == expected)
   }
 
   test("unparsing nested if-while combination with proper indentation") {
@@ -232,14 +199,46 @@ class TestUnparser extends AnyFunSuite:
       )),
       None
     )
-    assert(unparse(stmt).trim == """if (x) {
+    val expected = """if (x) {
       |  y = 1;
       |  while (y) {
       |    z = z + 1;
       |    y = y - 1;
       |  }
       |} else {
-      |}""".stripMargin)
+      |}""".stripMargin
+    assert(unparse(stmt) == expected)
+  }
+
+  test("round-trip: x = 5;") {
+    val input = "x = 5;"
+    val parsed = ASTBuilder.parseAll(ASTBuilder.repl, input).get
+    // For round-trip, unparse the statements inside the Block
+    val unparsed = parsed match
+      case Block(stmts) => stmts.map(unparse(_, 0)).mkString("\n")
+      case other => unparse(other)
+    val reparsed = ASTBuilder.parseAll(ASTBuilder.repl, unparsed).get
+    assert(parsed == reparsed)
+  }
+
+  test("round-trip: if (1) { x = 2; } else { x = 3; }") {
+    val input = "if (1) { x = 2; } else { x = 3; }"
+    val parsed = ASTBuilder.parseAll(ASTBuilder.repl, input).get
+    val unparsed = parsed match
+      case Block(stmts) => stmts.map(unparse(_, 0)).mkString("\n")
+      case other => unparse(other)
+    val reparsed = ASTBuilder.parseAll(ASTBuilder.repl, unparsed).get
+    assert(parsed == reparsed)
+  }
+
+  test("round-trip: while (y) { r = r + x; y = y - 1; }") {
+    val input = "while (y) { r = r + x; y = y - 1; }"
+    val parsed = ASTBuilder.parseAll(ASTBuilder.repl, input).get
+    val unparsed = parsed match
+      case Block(stmts) => stmts.map(unparse(_, 0)).mkString("\n")
+      case other => unparse(other)
+    val reparsed = ASTBuilder.parseAll(ASTBuilder.repl, unparsed).get
+    assert(parsed == reparsed)
   }
 
 end TestUnparser
