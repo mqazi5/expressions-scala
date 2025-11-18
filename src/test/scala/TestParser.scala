@@ -18,7 +18,7 @@ class TestParser extends AnyFunSuite:
 
   // Helper method to parse statements
   def parseStmt(input: String): Expr =
-    parser.parseAll(parser.expr, input) match
+    parser.parseAll(parser.statement, input) match
       case parser.Success(result, _) => result
       case parser.NoSuccess(msg, _)  => throw Exception(s"Parse error: $msg")
 

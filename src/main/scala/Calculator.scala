@@ -4,7 +4,7 @@ object Calculator:
 
   def processExpr(input: String): Unit =
     println("You entered: " + input)
-    val result = ASTBuilder.parseAll(ASTBuilder.expr, input)  // Parse expressions
+    val result = ASTBuilder.parseAll(ASTBuilder.statement, input)  // Parse statements
     if result.isEmpty then
       println("This expression could not be parsed")
     else

@@ -140,6 +140,7 @@ object behaviors:
 
   import org.json4s.JsonAST.JValue
   import org.json4s.JsonDSL.*
+  import org.json4s.JsonAST.JNull
 
   /** Converts an AST to a JSON representation */
   def toJson(e: Expr): JValue = e match
@@ -174,7 +175,7 @@ object behaviors:
       ("type" -> "If") ~
       ("condition" -> toJson(condition)) ~
       ("thenBlock" -> toJson(thenBlock)) ~
-      ("elseBlock" -> (elseBlock match { case Some(b) => toJson(b); case None => null }))
+      ("elseBlock" -> (elseBlock match { case Some(b) => toJson(b); case None => JNull }))
     case While(condition, body) =>
       ("type" -> "While") ~
       ("condition" -> toJson(condition)) ~
