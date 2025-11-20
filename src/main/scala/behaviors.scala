@@ -3,27 +3,46 @@ package edu.luc.cs.laufer.cs371.expressions
 import util.Try
 import Expr.*
 
+/** Semantic values arising during interpretation */
+enum Value derives CanEqual:
+  case Num(value: Int)
+
 object behaviors:
+  /** Type representing evaluation results */
+  type Result = Try[Value]
+  
   /** Environment for storing variable values. */
-  type Environment = scala.collection.mutable.Map[String, Int]
+  type Environment = scala.collection.mutable.Map[String, Value]
 
   /** Evaluates an expression with a given environment. */
-  def evaluateR(e: Expr)(using env: Environment): Int = e match
+  def evaluateR(e: Expr)(using env: Environment): Value = e match
     // Value expressions
-    case Constant(c) => c
+    case Constant(c) => Value.Num(c)
     case Variable(name) => env.getOrElse(name, throw IllegalArgumentException(s"undefined variable: $name"))
     
     // Arithmetic expressions
-    case UMinus(r)   => -evaluateR(r)
-    case Plus(l, r)  => evaluateR(l) + evaluateR(r)
-    case Minus(l, r) => evaluateR(l) - evaluateR(r)
-    case Times(l, r) => evaluateR(l) * evaluateR(r)
-    case Div(l, r)   => evaluateR(l) / evaluateR(r)
-    case Mod(l, r)   => evaluateR(l) % evaluateR(r)
+    case UMinus(r)   => 
+      evaluateR(r) match
+        case Value.Num(v) => Value.Num(-v)
+    case Plus(l, r)  => 
+      (evaluateR(l), evaluateR(r)) match
+        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv + rv)
+    case Minus(l, r) => 
+      (evaluateR(l), evaluateR(r)) match
+        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv - rv)
+    case Times(l, r) => 
+      (evaluateR(l), evaluateR(r)) match
+        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv * rv)
+    case Div(l, r)   => 
+      (evaluateR(l), evaluateR(r)) match
+        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv / rv)
+    case Mod(l, r)   => 
+      (evaluateR(l), evaluateR(r)) match
+        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv % rv)
     
     // Statement expressions - they evaluate to their last value or 0
     case Block(expressions) => 
-      expressions.foldLeft(0)((_, expr) => evaluateR(expr))
+      expressions.foldLeft(Value.Num(0))((_, expr) => evaluateR(expr))
     case ExpressionStmt(expr) => 
       evaluateR(expr)
     case Assignment(variable, expr) =>
@@ -31,17 +50,22 @@ object behaviors:
       env(variable) = value
       value
     case If(condition, thenBlock, elseBlock) =>
-      if evaluateR(condition) != 0 then
-        evaluateR(thenBlock)
-      else
-        elseBlock.map(evaluateR).getOrElse(0)
+      evaluateR(condition) match
+        case Value.Num(condValue) =>
+          if condValue != 0 then
+            evaluateR(thenBlock)
+          else
+            elseBlock.map(evaluateR).getOrElse(Value.Num(0))
     case While(condition, body) =>
-      var result = 0
-      while evaluateR(condition) != 0 do
+      var result = Value.Num(0)
+      while 
+        evaluateR(condition) match
+          case Value.Num(condValue) => condValue != 0
+      do
         result = evaluateR(body)
       result
 
-  def evaluate(e: Expr): Try[Int] = Try {
+  def evaluate(e: Expr): Result = Try {
     given env: Environment = scala.collection.mutable.Map.empty
     evaluateR(e)
   }

@@ -10,12 +10,15 @@ object Calculator:
     else
       import org.json4s.native.JsonMethods.{pretty, render}
       import behaviors.*
+      import Value.*
       val expr = result.get
       println("The resulting expression is: " + expr)
       println("The corresponding JSON structure is:")
       println(pretty(render(toJson(expr))))
       println("It has size " + size(expr) + " and height " + height(expr))
-      println("It evaluates to " + evaluate(expr))
+      println("It evaluates to " + evaluate(expr).map {
+        case Value.Num(v) => v.toString
+      }.getOrElse("Error in evaluation"))
 
   def main(args: Array[String]): Unit =
     if args.length > 0 then

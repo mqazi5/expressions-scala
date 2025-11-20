@@ -2,6 +2,8 @@ package edu.luc.cs.laufer.cs371.expressions
 
 import org.scalatest.funsuite.AnyFunSuite
 import TestFixtures.*
+import behaviors.*
+import Value.*
 
 object MainCombinatorParser:
   def main(args: Array[String]): Unit =
@@ -9,7 +11,9 @@ object MainCombinatorParser:
     println(parsedExpr.get)
     println(complex1)
     println(parsedExpr.get == complex1)
-    println(behaviors.evaluate(parsedExpr.get))
+    println(behaviors.evaluate(parsedExpr.get).map {
+      case Num(v) => v.toString
+    }.getOrElse("Error"))
 end MainCombinatorParser
 
 class TestCombinatorParser extends AnyFunSuite:
