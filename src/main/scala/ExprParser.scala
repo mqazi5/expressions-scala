@@ -42,7 +42,7 @@ trait ExprParser extends JavaTokenParsers:
   def factor: Parser[Expr] = (
     prefixOp ~ factor ^^ { case op ~ e => op(e) }
     | wholeNumber ^^ (n => Constant(n.toInt))
-    | ident ^^ Variable
+    | ident ^^ Variable.apply
     | "(" ~> expr <~ ")"
   )
 
@@ -73,7 +73,7 @@ trait ExprParser extends JavaTokenParsers:
 
   /** exprStmt ::= expr ";" */
   def exprStmt: Parser[Expr] = 
-    expr <~ ";" ^^ ExpressionStmt
+    expr <~ ";" ^^ ExpressionStmt.apply
 
   /** assignment ::= ident "=" expr ";" */
   def assignment: Parser[Expr] =

@@ -174,11 +174,7 @@ object behaviors:
       ("type" -> "If") ~
       ("condition" -> toJson(condition)) ~
       ("thenBlock" -> toJson(thenBlock)) ~
-<<<<<<< HEAD
-      ("elseBlock" -> (elseBlock match { case Some(b) => toJson(b); case None => JNull }))
-=======
       ("elseBlock" -> elseBlock.map(toJson).getOrElse(JNull))
->>>>>>> 8e87751fa3508715f21729b95f63fc49d9ff9880
     case While(condition, body) =>
       ("type" -> "While") ~
       ("condition" -> toJson(condition)) ~
