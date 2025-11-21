@@ -1,74 +1,102 @@
 package edu.luc.cs.laufer.cs371.expressions
 
 import util.Try
+import scala.util.{Success, Failure}
 import Expr.*
-
-/** Semantic values arising during interpretation */
-enum Value derives CanEqual:
-  case Num(value: Int)
+import edu.luc.cs.laufer.cs371.expressions.*
 
 object behaviors:
-  /** Type representing evaluation results */
-  type Result = Try[Value]
-  
-  /** Environment for storing variable values. */
+  /** Environment for storing variable values. */ 
+  //needs to be mutable
   type Environment = scala.collection.mutable.Map[String, Value]
 
-  /** Evaluates an expression with a given environment. */
-  def evaluateR(e: Expr)(using env: Environment): Value = e match
-    // Value expressions
-    case Constant(c) => Value.Num(c)
-    case Variable(name) => env.getOrElse(name, throw IllegalArgumentException(s"undefined variable: $name"))
-    
-    // Arithmetic expressions
-    case UMinus(r)   => 
-      evaluateR(r) match
-        case Value.Num(v) => Value.Num(-v)
-    case Plus(l, r)  => 
-      (evaluateR(l), evaluateR(r)) match
-        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv + rv)
-    case Minus(l, r) => 
-      (evaluateR(l), evaluateR(r)) match
-        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv - rv)
-    case Times(l, r) => 
-      (evaluateR(l), evaluateR(r)) match
-        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv * rv)
-    case Div(l, r)   => 
-      (evaluateR(l), evaluateR(r)) match
-        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv / rv)
-    case Mod(l, r)   => 
-      (evaluateR(l), evaluateR(r)) match
-        case (Value.Num(lv), Value.Num(rv)) => Value.Num(lv % rv)
-    
-    // Statement expressions - they evaluate to their last value or 0
-    case Block(expressions) => 
-      expressions.foldLeft(Value.Num(0))((_, expr) => evaluateR(expr))
-    case ExpressionStmt(expr) => 
-      evaluateR(expr)
-    case Assignment(variable, expr) =>
-      val value = evaluateR(expr)
-      env(variable) = value
-      value
-    case If(condition, thenBlock, elseBlock) =>
-      evaluateR(condition) match
-        case Value.Num(condValue) =>
-          if condValue != 0 then
-            evaluateR(thenBlock)
-          else
-            elseBlock.map(evaluateR).getOrElse(Value.Num(0))
-    case While(condition, body) =>
-      var result = Value.Num(0)
-      while 
-        evaluateR(condition) match
-          case Value.Num(condValue) => condValue != 0
-      do
-        result = evaluateR(body)
-      result
+  def evaluateR(e: Expr)(using env: Environment): Try[Value] = e match
 
-  def evaluate(e: Expr): Result = Try {
-    given env: Environment = scala.collection.mutable.Map.empty
+    case Constant(c) =>
+      Success(Num(c))
+
+    case Variable(name) =>
+      env.get(name) match
+        case Some(v) => Success(v)
+        case None    => Failure(new NoSuchFieldException(name))
+
+    case UMinus(r) =>
+      evaluateR(r).map { case Num(v) => Num(-v) }
+
+    case Plus(l, r) =>
+      for
+        case Num(a) <- evaluateR(l)
+        case Num(b) <- evaluateR(r)
+      yield Num(a + b)
+
+    case Minus(l, r) =>
+      for
+        case Num(a) <- evaluateR(l)
+        case Num(b) <- evaluateR(r)
+      yield Num(a - b)
+
+    case Times(l, r) =>
+      for
+        case Num(a) <- evaluateR(l)
+        case Num(b) <- evaluateR(r)
+      yield Num(a * b)
+
+    case Div(l, r) =>
+      for
+        case Num(a) <- evaluateR(l)
+        case Num(b) <- evaluateR(r)
+        res <- if b == 0 then Failure(new ArithmeticException("division by zero"))
+               else Success(Num(a / b))
+      yield res
+
+    case Mod(l, r) =>
+      for
+        case Num(a) <- evaluateR(l)
+        case Num(b) <- evaluateR(r)
+        res <- if b == 0 then Failure(new ArithmeticException("mod by zero"))
+               else Success(Num(a % b))
+      yield res
+
+    case Assignment(variable, expr) =>
+      evaluateR(expr).map { v =>
+        env(variable) = v
+        Num(0)   // assignment evaluates to void
+      }
+
+    case ExpressionStmt(expr) =>
+      evaluateR(expr).map(_ => Num(0))
+
+    case Block(expressions) =>
+      expressions.foldLeft(Success(Num(0)): Try[Value]) {
+        (acc, expr) => acc.flatMap(_ => evaluateR(expr))
+      }
+
+    case If(condition, thenBlock, elseBlock) =>
+      evaluateR(condition).flatMap {
+        case Num(v) =>
+          if v != 0 then evaluateR(thenBlock)
+          else elseBlock.map(evaluateR).getOrElse(Success(Num(0)))
+      }
+
+    case While(condition, body) =>
+      def loop(): Try[Value] =
+        evaluateR(condition).flatMap {
+          case Num(v) if v != 0 =>
+            evaluateR(body).flatMap(_ => loop())
+          case Num(_) =>
+            Success(Num(0))
+        }
+      loop()
+
+  /** Entry point for evaluating with a fresh environment. */
+  def evaluate(e: Expr): Try[Value] =
+    val env: Environment = scala.collection.mutable.Map.empty
+    evaluateWithEnv(e, env)
+
+  /** Evaluate while exposing the environment (used by REPL). */
+  def evaluateWithEnv(e: Expr, env: Environment): Try[Value] =
+    given Environment = env
     evaluateR(e)
-  }
 
   def size(e: Expr): Int = e match
     // Value expressions
@@ -163,7 +191,6 @@ object behaviors:
 
   import org.json4s.JsonAST.{JValue, JNull}
   import org.json4s.JsonDSL.*
-  import org.json4s.JsonAST.JNull
 
   /** Converts an AST to a JSON representation */
   def toJson(e: Expr): JValue = e match
