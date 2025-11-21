@@ -3,7 +3,7 @@ package edu.luc.cs.laufer.cs371.expressions
 import org.scalatest.funsuite.AnyFunSuite
 import TestFixtures.*
 import behaviors.*
-import Value.*
+import edu.luc.cs.laufer.cs371.expressions.*
 
 object MainCombinatorParser:
   def main(args: Array[String]): Unit =

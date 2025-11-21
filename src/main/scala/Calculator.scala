@@ -4,21 +4,18 @@ object Calculator:
 
   def processExpr(input: String): Unit =
     println("You entered: " + input)
-    val result = ASTBuilder.parseAll(ASTBuilder.statement, input)  // Parse statements
+    val result = ASTBuilder.parseAll(ASTBuilder.expr, input)  // Parse expressions
     if result.isEmpty then
       println("This expression could not be parsed")
     else
       import org.json4s.native.JsonMethods.{pretty, render}
       import behaviors.*
-      import Value.*
       val expr = result.get
       println("The resulting expression is: " + expr)
       println("The corresponding JSON structure is:")
       println(pretty(render(toJson(expr))))
       println("It has size " + size(expr) + " and height " + height(expr))
-      println("It evaluates to " + evaluate(expr).map {
-        case Value.Num(v) => v.toString
-      }.getOrElse("Error in evaluation"))
+      println("It evaluates to " + evaluate(expr))
 
   def main(args: Array[String]): Unit =
     if args.length > 0 then
