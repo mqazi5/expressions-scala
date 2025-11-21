@@ -5,7 +5,6 @@ import org.scalatest.funsuite.AnyFunSuite
 
 import behaviors.*
 import TestFixtures.*
-import Value.*
 
 object Main:
   def main(args: Array[String]): Unit =
@@ -27,9 +26,7 @@ object Main:
 
   def processExpr(n: String, e: Expr): Unit =
     println(s"$n = $e")
-    println(s"evaluate($n) = ${evaluate(e).map {
-      case Num(v) => v.toString
-    }.getOrElse("Error")}")
+    println(s"evaluate($n) = ${evaluate(e)}")
     println(s"size($n) = ${size(e)}")
     println(s"height($n) = ${height(e)}")
 
@@ -43,13 +40,27 @@ object Main:
         println(s"Parse error: $msg")
 
 end Main
-
+// need to change tests for 3b functionalist value based
+//getting very werid errors from this part
 class Test extends AnyFunSuite:
-  test("evaluate(p)") { assert(evaluate(complex1).map { case Num(v) => v }.get == -1) }
+  test("evaluate(p)") {
+    evaluate(complex1) match
+      case Success(Num(v)) => assert(v == -1)
+      case other           => fail(s"Expected Success(Num(-1)), got $other")
+  }
+
   test("size(p)") { assert(size(complex1) == 9) }
   test("height(p)") { assert(height(complex1) == 4) }
-  test("evaluate(q)") { assert(evaluate(complex2).map { case Num(v) => v }.get == 0) }
+
+  test("evaluate(q)") {
+    evaluate(complex2) match
+      case Success(Num(v)) => assert(v == 0)
+      case other           => fail(s"Expected Success(Num(0)), got $other")
+  }
+
   test("size(q)") { assert(size(complex2) == 10) }
   test("height(q)") { assert(height(complex2) == 5) }
+
   test("evaluate(bad)") { assert(evaluate(bad).isFailure) }
 end Test
+
