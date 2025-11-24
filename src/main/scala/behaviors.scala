@@ -60,16 +60,18 @@ object behaviors:
     case Assignment(variable, expr) =>
       evaluateR(expr).map { v =>
         env(variable) = v
-        Num(0)   // assignment evaluates to void
+        v   // assignment evaluates to the assigned value
       }
 
     case ExpressionStmt(expr) =>
       evaluateR(expr).map(_ => Num(0))
 
     case Block(expressions) =>
-      expressions.foldLeft(Success(Num(0)): Try[Value]) {
-        (acc, expr) => acc.flatMap(_ => evaluateR(expr))
-      }
+      if expressions.isEmpty then Success(Num(0))
+      else
+        expressions.foldLeft(Success(Num(0)): Try[Value]) {
+          (_, expr) => evaluateR(expr)
+        }
 
     case If(condition, thenBlock, elseBlock) =>
       evaluateR(condition).flatMap {

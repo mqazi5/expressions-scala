@@ -4,7 +4,7 @@ object Calculator:
 
   def processExpr(input: String): Unit =
     println("You entered: " + input)
-    val result = ASTBuilder.parseAll(ASTBuilder.expr, input)  // Parse expressions
+    val result = ASTBuilder.parseAll(ASTBuilder.statement, input)  // Parse statements
     if result.isEmpty then
       println("This expression could not be parsed")
     else
@@ -15,7 +15,10 @@ object Calculator:
       println("The corresponding JSON structure is:")
       println(pretty(render(toJson(expr))))
       println("It has size " + size(expr) + " and height " + height(expr))
-      println("It evaluates to " + evaluate(expr))
+      println("It evaluates to " + evaluate(expr).map {
+        case Num(v) => v.toString
+        case other => other.toString
+      }.getOrElse("Error in evaluation"))
 
   def main(args: Array[String]): Unit =
     if args.length > 0 then

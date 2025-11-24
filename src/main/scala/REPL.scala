@@ -35,7 +35,13 @@ object REPL:
           println(s"You entered: $input")
           
           // Parse and evaluate input
-          ASTBuilder.parseAll(ASTBuilder.expr, input) match
+          val parseResult = ASTBuilder.parseAll(ASTBuilder.statement, input) match
+            case success @ ASTBuilder.Success(_, _) => success
+            case ASTBuilder.NoSuccess(_, _) =>
+              // Try as multiple statements (repl parser)
+              ASTBuilder.parseAll(ASTBuilder.repl, input)
+          
+          parseResult match
             case ASTBuilder.Success(expr, _) =>
               // Show parsed expression/statement
               println("Parsed:")
@@ -45,7 +51,9 @@ object REPL:
               val result = evaluateInEnv(expr)
 
               // Print the result
-              println(s"Result: $result")
+              result match
+                case scala.util.Success(value) => println(s"Result: $value")
+                case scala.util.Failure(ex) => println(s"Error: ${ex.getMessage}")
 
               // Show current environment (variables)
               if env.nonEmpty then
